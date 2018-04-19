@@ -6,38 +6,41 @@ defmodule Siren.ViewTest do
     use Siren.View
   end
 
+  setup do
+    conn =
+      conn(:get, "/")
+      |> Map.put(:host, "http://blog.example.com")
+
+    [conn: conn]
+  end
+
   describe "class" do
-    test "it will not render a class" do
-      entity =
-        conn(:get, "/")
-        |> TestView.render
+    test "it will not render a class", %{conn: conn} do
+      entity = TestView.render(conn)
 
       refute Map.get(entity, :class)
     end
 
-    test "it will render the class" do
+    test "it will render the class", %{conn: conn} do
       defmodule PostView do
         use Siren.View
 
         def class, do: ["post"]
       end
 
-      conn = conn(:get, "/")
       assert %{:class => ["post"]} = PostView.render(conn)
     end
   end
 
   describe "properties" do
-    test "it will not render properties" do
-      entity =
-        conn(:get, "/")
-        |> TestView.render
+    test "it will not render properties", %{conn: conn} do
+      entity = TestView.render(conn)
 
       refute Map.get(entity, :properties)
     end
   end
 
-  test "it will render properties" do
+  test "it will render properties", %{conn: conn} do
     defmodule PostView do
       use Siren.View
 
@@ -48,21 +51,17 @@ defmodule Siren.ViewTest do
       end
     end
 
-    assert %{:properties => %{"Foo" => "Bar"}} =
-      conn(:get, "/")
-      |> PostView.render(%{"foo" => "bar"})
+    assert %{:properties => %{"Foo" => "Bar"}} = PostView.render(conn, %{"foo" => "bar"})
   end
 
   describe "links" do
-    test "it will not render links" do
-      entity =
-        conn(:get, "/")
-        |> TestView.render
+    test "it will not render links", %{conn: conn} do
+      entity = TestView.render(conn)
 
       refute Map.get(entity, :links)
     end
 
-    test "it will render a links" do
+    test "it will render a links", %{conn: conn} do
       defmodule PostView do
         use Siren.View
 
@@ -74,29 +73,23 @@ defmodule Siren.ViewTest do
         end
       end
 
-      entity =
-        conn(:get, "/")
-        |> PostView.render(%{page: 2})
-
       assert %{
         :links => [
           %{rel: :self, href: "http://example.com"},
           %{rel: :next, href: "http://example.com?page=2"}
         ]
-      } = entity
+      } = PostView.render(conn, %{page: 2})
     end
   end
 
   describe "entities" do
-    test "it will not render entities" do
-      entity =
-        conn(:get, "/")
-        |> TestView.render
+    test "it will not render entities", %{conn: conn} do
+      entity = TestView.render(conn)
 
       refute Map.get(entity, :links)
     end
 
-    test "it will render entities as links" do
+    test "it will render entities as links", %{conn: conn} do
       defmodule CommentView do
         use Siren.View
 
@@ -115,11 +108,6 @@ defmodule Siren.ViewTest do
         end
       end
 
-      entity =
-        conn(:get, "/")
-        |> Map.put(:host, "http://blog.example.com")
-        |> PostView.render(%{comment: %{id: 4}})
-
       assert %{
         :entities => [
           %{
@@ -128,10 +116,10 @@ defmodule Siren.ViewTest do
             href: "http://blog.example.com/comments/4"
           }
         ]
-      } = entity
+      } = PostView.render(conn, %{comment: %{id: 4}})
     end
 
-    test "it will render an embeded entities" do
+    test "it will render an embeded entities", %{conn: conn} do
       defmodule CommentView do
         use Siren.View
 
@@ -160,11 +148,6 @@ defmodule Siren.ViewTest do
         end
       end
 
-      entity =
-        conn(:get, "/")
-        |> Map.put(:host, "http://blog.example.com")
-        |> PostView.render(%{comment: %{id: 349, body: "Great post!", user: "anuuser"}})
-
       assert %{
         :entities => [
           %{
@@ -179,7 +162,7 @@ defmodule Siren.ViewTest do
             ]
           }
         ]
-      } = entity
+      } = PostView.render(conn, %{comment: %{id: 349, body: "Great post!", user: "anuuser"}})
     end
   end
 end
