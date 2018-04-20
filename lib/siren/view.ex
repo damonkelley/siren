@@ -8,10 +8,10 @@ defmodule Siren.View do
 
       def render(conn, data \\ %{}) do
         %{}
-        |> add_attribute(:class, class())
-        |> add_attribute(:properties, properties(data))
-        |> add_attribute(:entities, entities(conn, data))
-        |> add_attribute(:links, links(conn, data))
+        |> put_attribute(:class, class())
+        |> put_attribute(:properties, properties(data))
+        |> put_attribute(:entities, entities(conn, data))
+        |> put_attribute(:links, links(conn, data))
       end
 
       def class, do: nil
@@ -19,8 +19,8 @@ defmodule Siren.View do
       def links(_conn, _data), do: nil
       def entities(_conn, _data), do: nil
 
-      defp add_attribute(data, _name, nil), do: data
-      defp add_attribute(data, name, value), do: Map.merge(data, %{name => value})
+      defp put_attribute(data, _name, nil), do: data
+      defp put_attribute(data, name, value), do: Map.merge(data, %{name => value})
 
       defoverridable [class: 0, properties: 1, links: 2, entities: 2]
     end
