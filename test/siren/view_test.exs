@@ -19,7 +19,7 @@ defmodule Siren.ViewTest do
 
     def links(%{host: host}, %{id: id}) do
       [
-        %{rel: :self, href: "#{host}/comments/#{id}"},
+        link(:raw, "#{host}/comments/#{id}?raw")
       ]
     end
   end
@@ -29,14 +29,15 @@ defmodule Siren.ViewTest do
 
     def class, do: ["post"]
 
+    def self(%{host: host}, _), do: host
+
     def properties(data) do
       Map.take(data, [:author, :title])
     end
 
     def links(%{host: host} = _conn, data) do
       [
-        %{rel: :self, href: host},
-        %{rel: :next, href: "#{host}?page=#{Map.get(data, :page, 1)}"},
+        link(:next, "#{host}?page=#{Map.get(data, :page, 1)}")
       ]
     end
   end
@@ -47,6 +48,19 @@ defmodule Siren.ViewTest do
       |> Map.put(:host, "http://blog.example.com")
 
     [conn: conn]
+  end
+
+  describe "self" do
+    test "it will add self to the links", %{conn: conn} do
+      defmodule WithSelf do
+        use Siren.View
+
+        def self(_, _), do: "http://self.net"
+      end
+      %{links: links} = WithSelf.render(conn)
+
+      assert Enum.member?(links, %{rel: [:self], href: "http://self.net"})
+    end
   end
 
   describe "class" do
@@ -87,9 +101,9 @@ defmodule Siren.ViewTest do
 
     test "it will render a links", %{conn: conn} do
       assert %{
-        :links => [
-          %{rel: :self, href: "http://blog.example.com"},
-          %{rel: :next, href: "http://blog.example.com?page=2"}
+        links: [
+          %{rel: [:self], href: "http://blog.example.com"},
+          %{rel: [:next], href: "http://blog.example.com?page=2"}
         ]
       } = PostView.render(conn, %{page: 2})
     end
@@ -114,7 +128,7 @@ defmodule Siren.ViewTest do
       end
 
       assert %{
-        :entities => [
+        entities: [
           %{
             class: [:comment],
             rel: ["post-comment"],
@@ -136,7 +150,7 @@ defmodule Siren.ViewTest do
       end
 
       assert %{
-        :entities => [
+        entities: [
           %{
             class: [:comment],
             rel: ["post-comment"],
@@ -145,11 +159,23 @@ defmodule Siren.ViewTest do
               user: "anuuser"
             },
             links: [
-              %{rel: :self, href: "http://blog.example.com/comments/349"},
+              %{rel: [:self], href: "http://blog.example.com/comments/349"},
+              %{rel: [:raw], href: "http://blog.example.com/comments/349?raw"},
             ]
           }
         ]
       } = PostViewWithEmbeddedEntity.render(conn, %{comment: %{id: 349, body: "Great post!", user: "anuuser"}})
+    end
+  end
+
+  describe "link" do
+    test "it will accept a single rel" do
+      assert %{rel: [:self], href: "http://example.com"} == Siren.View.link(:self, "http://example.com")
+    end
+
+    test "it will accept a list of rels" do
+      assert %{rel: [:blogs, :posts], href: "http://example.com/posts"} ==
+        Siren.View.link([:blogs, :posts], "http://example.com/posts")
     end
   end
 end
