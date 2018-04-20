@@ -6,6 +6,41 @@ defmodule Siren.ViewTest do
     use Siren.View
   end
 
+  defmodule CommentView do
+    use Siren.View
+
+    def class, do: [:comment]
+
+    def self(%{host: host}, %{id: id}), do: "#{host}/comments/#{id}"
+
+    def properties(%{body: body, user: user}) do
+      %{body: body, user: user}
+    end
+
+    def links(%{host: host}, %{id: id}) do
+      [
+        %{rel: :self, href: "#{host}/comments/#{id}"},
+      ]
+    end
+  end
+
+  defmodule PostView do
+    use Siren.View
+
+    def class, do: ["post"]
+
+    def properties(data) do
+      Map.take(data, [:author, :title])
+    end
+
+    def links(%{host: host} = _conn, data) do
+      [
+        %{rel: :self, href: host},
+        %{rel: :next, href: "#{host}?page=#{Map.get(data, :page, 1)}"},
+      ]
+    end
+  end
+
   setup do
     conn =
       conn(:get, "/")
@@ -22,13 +57,7 @@ defmodule Siren.ViewTest do
     end
 
     test "it will render the class", %{conn: conn} do
-      defmodule PostView do
-        use Siren.View
-
-        def class, do: ["post"]
-      end
-
-      assert %{:class => ["post"]} = PostView.render(conn)
+      assert %{class: ["post"]} = PostView.render(conn)
     end
   end
 
@@ -41,17 +70,12 @@ defmodule Siren.ViewTest do
   end
 
   test "it will render properties", %{conn: conn} do
-    defmodule PostView do
-      use Siren.View
-
-      def properties(data) do
-        data
-        |> Enum.map(fn {key, value} -> {String.capitalize(key), String.capitalize(value)} end)
-        |> Enum.into(%{})
-      end
-    end
-
-    assert %{:properties => %{"Foo" => "Bar"}} = PostView.render(conn, %{"foo" => "bar"})
+    assert %{
+      properties: %{
+        author: "admin",
+        title: "A Nu Post"
+      }
+    } = PostView.render(conn, %{author: "admin", title: "A Nu Post"})
   end
 
   describe "links" do
@@ -62,21 +86,10 @@ defmodule Siren.ViewTest do
     end
 
     test "it will render a links", %{conn: conn} do
-      defmodule PostView do
-        use Siren.View
-
-        def links(_conn, %{page: page}) do
-          [
-            %{rel: :self, href: "http://example.com"},
-            %{rel: :next, href: "http://example.com?page=#{page}"},
-          ]
-        end
-      end
-
       assert %{
         :links => [
-          %{rel: :self, href: "http://example.com"},
-          %{rel: :next, href: "http://example.com?page=2"}
+          %{rel: :self, href: "http://blog.example.com"},
+          %{rel: :next, href: "http://blog.example.com?page=2"}
         ]
       } = PostView.render(conn, %{page: 2})
     end
@@ -90,15 +103,7 @@ defmodule Siren.ViewTest do
     end
 
     test "it will render entities as links", %{conn: conn} do
-      defmodule CommentView do
-        use Siren.View
-
-        def class, do: [:comment]
-
-        def self(%{host: host}, %{id: id}), do: "#{host}/comments/#{id}"
-      end
-
-      defmodule PostView do
+      defmodule PostViewWithLinkedEntity do
         use Siren.View
 
         def entities(conn, %{comment: comment}) do
@@ -116,29 +121,11 @@ defmodule Siren.ViewTest do
             href: "http://blog.example.com/comments/4"
           }
         ]
-      } = PostView.render(conn, %{comment: %{id: 4}})
+      } = PostViewWithLinkedEntity.render(conn, %{comment: %{id: 4}})
     end
 
     test "it will render an embeded entities", %{conn: conn} do
-      defmodule CommentView do
-        use Siren.View
-
-        def class, do: [:comment]
-
-        def self(%{host: host}, %{id: id}), do: "#{host}/comments/#{id}"
-
-        def properties(%{body: body, user: user}) do
-          %{body: body, user: user}
-        end
-
-        def links(%{host: host}, %{id: id}) do
-          [
-            %{rel: :self, href: "#{host}/comments/#{id}"},
-          ]
-        end
-      end
-
-      defmodule PostView do
+      defmodule PostViewWithEmbeddedEntity do
         use Siren.View
 
         def entities(conn, %{comment: comment}) do
@@ -162,7 +149,7 @@ defmodule Siren.ViewTest do
             ]
           }
         ]
-      } = PostView.render(conn, %{comment: %{id: 349, body: "Great post!", user: "anuuser"}})
+      } = PostViewWithEmbeddedEntity.render(conn, %{comment: %{id: 349, body: "Great post!", user: "anuuser"}})
     end
   end
 end
